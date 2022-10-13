@@ -15,38 +15,32 @@ class V2Vchannels:
         self.t = 0
         self.h_bs = 1.5
         self.h_ms = 1.5
-        self.fc = 2
+        self.fc = 28
         self.decorrelation_distance = 10
-        self.shadow_std = 3
+        self.shadow_std = 4
 
     def get_path_loss(self, position_A, position_B):
-        d1 = abs(position_A[0] - position_B[0])
-        d2 = abs(position_A[1] - position_B[1])
-        d = math.hypot(d1, d2) + 0.001
-        d_bp = 4 * (self.h_bs - 1) * (self.h_ms - 1) * self.fc * (10 ** 9) / (3 * 10 ** 8)
+      d1 = abs(position_A[0] - position_B[0])
+      d2 = abs(position_A[1] - position_B[1])
+      d = math.hypot(d1, d2) + 0.001
 
-        def PL_Los(d):
-            if d <= 3:
-                return 22.7 * np.log10(3) + 41 + 20 * np.log10(self.fc / 5)
-            else:
-                if d < d_bp:
-                    return 22.7 * np.log10(d) + 41 + 20 * np.log10(self.fc / 5)
-                else:
-                    return 40.0 * np.log10(d) + 9.45 - 17.3 * np.log10(self.h_bs) - 17.3 * np.log10(self.h_ms) + 2.7 * np.log10(self.fc / 5)
-
-        def PL_NLos(d_a, d_b):
-            n_j = max(2.8 - 0.0024 * d_b, 1.84)
-            return PL_Los(d_a) + 20 - 12.5 * n_j + 10 * n_j * np.log10(d_b) + 3 * np.log10(self.fc / 5)
-
-        if min(d1, d2) < 7:
-            PL = PL_Los(d)
+      def PL_Los(d):
+        if d <= 3:
+          return 32.4 + (20 * np.log10(3)) + (20 * np.log10(self.fc))
         else:
-            PL = min(PL_NLos(d1, d2), PL_NLos(d2, d1))
-        return PL  # + self.shadow_std * np.random.normal()
+          return 32.4 + (20 * np.log10(d)) + (20 * np.log10(self.fc))
+
+      def PL_NLos(d):
+        return 36.85 + (30 * np.log10(d)) + (18.9 * np.log10(self.fc))
+      if min(d1, d2) < 7:
+        PL = PL_Los(d)
+      else:
+        PL = min(PL_NLos(d), PL_NLos(d))
+      return PL
 
     def get_shadowing(self, delta_distance, shadowing):
         return np.exp(-1 * (delta_distance / self.decorrelation_distance)) * shadowing \
-               + math.sqrt(1 - np.exp(-2 * (delta_distance / self.decorrelation_distance))) * np.random.normal(0, 3)  # standard dev is 3 db
+               + math.sqrt(1 - np.exp(-2 * (delta_distance / self.decorrelation_distance))) * np.random.normal(0, 4)  # standard dev is 3 db
 
 
 class V2Ichannels:
@@ -59,12 +53,16 @@ class V2Ichannels:
         self.Decorrelation_distance = 50
         self.BS_position = [750 / 2, 1299 / 2]  # center of the grids
         self.shadow_std = 8
+        self.fc = 28
 
     def get_path_loss(self, position_A):
         d1 = abs(position_A[0] - self.BS_position[0])
         d2 = abs(position_A[1] - self.BS_position[1])
         distance = math.hypot(d1, d2)
-        return 128.1 + 37.6 * np.log10(math.sqrt(distance ** 2 + (self.h_bs - self.h_ms) ** 2) / 1000) # + self.shadow_std * np.random.normal()
+        if distance <= 3:
+          return 32.4 + (20 * np.log10(3)) + (20 * np.log10(self.fc))
+        else:
+          return 32.4 + (20 * np.log10(distance)) + (20 * np.log10(self.fc))
 
     def get_shadowing(self, delta_distance, shadowing):
         nVeh = len(shadowing)
@@ -106,7 +104,7 @@ class Environ:
         self.V2I_channels_abs = []
 
         self.V2I_power_dB = 23  # dBm
-        self.V2V_power_dB_List = [23, 15, 5, -100]  # the power levels
+        self.V2V_power_dB_List = self.calc_power_level(23, 49)  # the power levels
         self.sig2_dB = -114
         self.bsAntGain = 8
         self.bsNoiseFigure = 5
@@ -119,7 +117,7 @@ class Environ:
         self.n_neighbor = n_neighbor
         self.time_fast = 0.001
         self.time_slow = 0.1  # update slow fading/vehicle position every 100 ms
-        self.bandwidth = int(1e6)  # bandwidth per RB, 1 MHz
+        self.bandwidth = int(1000e6)  # bandwidth per RB, 1 MHz
         # self.bandwidth = 1500
         self.demand_size = int((4 * 190 + 300) * 8 * 2)  # V2V payload: 1060 Bytes every 100 ms
         # self.demand_size = 20
@@ -127,6 +125,15 @@ class Environ:
         self.V2V_Interference_all = np.zeros((self.n_Veh, self.n_neighbor, self.n_RB)) + self.sig2
         self.V2V_Interference_all_sarl = np.zeros((self.n_Veh, self.n_neighbor, self.n_RB)) + self.sig2
         self.V2V_Interference_all_dpra = np.zeros((self.n_Veh, self.n_neighbor, self.n_RB)) + self.sig2
+
+    def calc_power_level(self, V2V_Max_power, power_level):
+      Quantised_Power = [-100]
+      Quantised_Piece_Power = V2V_Max_power/power_level
+      tmp_v = 0
+      for ix in range(power_level):
+          tmp_v += Quantised_Piece_Power
+          Quantised_Power.append(tmp_v)
+      return Quantised_Power
 
     def add_new_vehicles(self, start_position, start_direction, start_velocity):
         self.vehicles.append(Vehicle(start_position, start_direction, start_velocity))
@@ -643,7 +650,7 @@ class Environ:
         action_temp = actions.copy()
         V2I_Rate, V2V_Rate, reward_elements = self.Compute_Performance_Reward_Train(action_temp)
 
-        lambdda = 0.1
+        lambdda = 0
         reward = lambdda * np.sum(V2I_Rate) / (self.n_Veh * 10) + (1 - lambdda) * np.sum(reward_elements) / (self.n_Veh * self.n_neighbor)
         # reward = lambdda * np.sum(V2I_Rate)/(self.n_Veh*10)  + (1-lambdda)*np.sum(V2V_Rate)/(self.n_Veh*self.n_neighbor*5)
 
