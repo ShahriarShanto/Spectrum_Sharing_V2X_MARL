@@ -50,7 +50,7 @@ epsi_anneal_length = int(0.8*n_episode)
 mini_batch_step = n_step_per_episode
 target_update_step = n_step_per_episode*4
 
-n_episode_test = 100  # test episodes
+n_episode_test = 200  # test episodes
 
 ######################################################
 
@@ -125,7 +125,7 @@ with g.as_default():
     layer_2_b = tf.layers.batch_normalization(layer_2)
     layer_3 = tf.nn.relu(tf.add(tf.matmul(layer_2_b, w_3), b_3))
     layer_3_b = tf.layers.batch_normalization(layer_3)
-    y = tf.nn.relu(tf.add(tf.matmul(layer_3, w_4), b_4))
+    y = tf.nn.relu(tf.add(tf.matmul(layer_3_b, w_4), b_4))
     g_q_action = tf.argmax(y, axis=1)
 
     # compute loss
