@@ -117,7 +117,7 @@ class Environ:
         self.n_neighbor = n_neighbor
         self.time_fast = 0.001
         self.time_slow = 0.1  # update slow fading/vehicle position every 100 ms
-        self.bandwidth = int(1000e6)  # bandwidth per RB, 1 MHz
+        self.bandwidth = int(1.4e6)  # bandwidth per RB, 1 MHz
         # self.bandwidth = 1500
         self.demand_size = int((4 * 190 + 300) * 8 * 2)  # V2V payload: 1060 Bytes every 100 ms
         # self.demand_size = 20
