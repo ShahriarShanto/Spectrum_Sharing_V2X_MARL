@@ -50,7 +50,7 @@ epsi_anneal_length = int(0.8*n_episode)
 mini_batch_step = n_step_per_episode
 target_update_step = n_step_per_episode*4
 
-n_episode_test = 200  # test episodes
+n_episode_test = 300  # test episodes
 
 ######################################################
 
